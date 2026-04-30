@@ -7,4 +7,7 @@ RUN apt-get update \
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+COPY syncexclude.lst /config/syncexclude.lst
+COPY unsyncedfolders.lst /config/unsyncedfolders.lst
+
 ENTRYPOINT ["/entrypoint.sh"]

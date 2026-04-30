@@ -1,0 +1,17 @@
+# Exclude patterns for nextcloudcmd --exclude
+# One glob pattern per line. Lines starting with # are comments.
+# Patterns match against the filename or path segment, not the full path.
+#
+# Examples:
+#   *.tmp          — exclude all .tmp files
+#   .DS_Store      — exclude macOS metadata files
+#   node_modules   — exclude node_modules directories
+#   Thumbs.db      — exclude Windows thumbnail cache
+
+.DS_Store
+.localized
+Thumbs.db
+desktop.ini
+*.tmp
+*.swp
+~$*

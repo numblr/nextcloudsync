@@ -1,0 +1,9 @@
+# Selective sync: remote folders to EXCLUDE from sync (one path per line).
+# Paths are relative to the remote root being synced.
+# Lines starting with # are comments.
+#
+# Examples:
+#   /Archive        — skip the Archive folder on the remote
+#   /Videos         — skip the Videos folder
+#
+# Leave this file empty to sync all remote folders.

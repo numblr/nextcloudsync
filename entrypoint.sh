@@ -8,6 +8,7 @@ set -e
 : "${REMOTE_FOLDER:=/}"
 : "${EXCLUDE_FILE:=/config/syncexclude.lst}"
 : "${UNSYNCED_FOLDERS_FILE:=/config/unsyncedfolders.lst}"
+: "${SYNC_TIMEOUT:=300}"
 
 EXTRA_ARGS=""
 
@@ -19,8 +20,10 @@ if [ -f "$UNSYNCED_FOLDERS_FILE" ]; then
   EXTRA_ARGS="$EXTRA_ARGS --unsyncedfolders $UNSYNCED_FOLDERS_FILE"
 fi
 
+# nextcloudcmd can hang after completing a sync on headless systems (no D-Bus).
+# timeout ensures the container exits once the sync is done.
 # shellcheck disable=SC2086
-exec nextcloudcmd \
+exec timeout "$SYNC_TIMEOUT" nextcloudcmd \
   --non-interactive \
   --silent \
   -u "$NEXTCLOUD_USER" \

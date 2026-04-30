@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # End-to-end test for nextclouddock.
 #
-# Starts a local Nextcloud + MariaDB stack, syncs test files using
-# nextclouddock, verifies the files exist on Nextcloud via WebDAV, then
-# tears everything down.
+# Starts a local Nextcloud + MariaDB stack and runs three test suites:
+#   1. Basic sync  — files are uploaded and reachable via WebDAV
+#   2. Exclude     — files matching syncexclude.lst patterns are not uploaded
+#   3. Unsynced    — remote folders listed in unsyncedfolders.lst are not downloaded
 #
 # Usage:
 #   cd test/
@@ -23,6 +24,7 @@ set -a; source "${ENV_FILE}"; set +a
 COMPOSE_PROJECT=nextcloudtest
 NETWORK="${COMPOSE_PROJECT}_default"
 NC_URL_HOST="http://localhost:8080"
+WEBDAV_BASE="${NC_URL_HOST}/remote.php/webdav"
 
 GREEN='\033[0;32m'; RED='\033[0;31m'; YELLOW='\033[1;33m'; NC='\033[0m'
 pass() { echo -e "${GREEN}[PASS]${NC} $*"; }
@@ -40,18 +42,78 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Step 1: Build nextclouddock image
+# ── Helpers ────────────────────────────────────────────────────────────────────
+
+# Run nextclouddock with the given local dir, plus any extra -e overrides
+run_sync() {
+  local local_dir="$1"; shift
+  docker run --rm \
+    --network "${NETWORK}" \
+    --env-file "${ENV_FILE}" \
+    -e SYNC_TIMEOUT=60 \
+    "$@" \
+    -v "${local_dir}:/sync" \
+    nextclouddock
+}
+
+# Assert a remote WebDAV path returns HTTP 200 (file exists)
+assert_remote_exists() {
+  local path="$1"
+  local code
+  code=$(curl -s -o /dev/null -w "%{http_code}" \
+    -u "${NEXTCLOUD_USER}:${NEXTCLOUD_PASSWORD}" \
+    "${WEBDAV_BASE}/${path}")
+  [[ "${code}" == "200" ]] \
+    && pass "remote exists:  ${path}" \
+    || fail "remote missing: ${path} (HTTP ${code})"
+}
+
+# Assert a remote WebDAV path does NOT return HTTP 200 (file was excluded)
+assert_remote_absent() {
+  local path="$1"
+  local code
+  code=$(curl -s -o /dev/null -w "%{http_code}" \
+    -u "${NEXTCLOUD_USER}:${NEXTCLOUD_PASSWORD}" \
+    "${WEBDAV_BASE}/${path}")
+  [[ "${code}" != "200" ]] \
+    && pass "remote absent:  ${path} (HTTP ${code})" \
+    || fail "remote present (should be excluded): ${path}"
+}
+
+# Assert a local path does NOT exist (was not downloaded)
+assert_local_absent() {
+  local dir="$1" rel_path="$2"
+  [[ ! -e "${dir}/${rel_path}" ]] \
+    && pass "local absent:   ${rel_path}" \
+    || fail "local present (should not have been downloaded): ${rel_path}"
+}
+
+# Create a remote folder + file via WebDAV
+webdav_mkdir() {
+  local path="$1"
+  curl -sf -o /dev/null -X MKCOL \
+    -u "${NEXTCLOUD_USER}:${NEXTCLOUD_PASSWORD}" \
+    "${WEBDAV_BASE}/${path}"
+}
+webdav_put() {
+  local path="$1" content="$2"
+  curl -sf -o /dev/null \
+    -u "${NEXTCLOUD_USER}:${NEXTCLOUD_PASSWORD}" \
+    -T - "${WEBDAV_BASE}/${path}" <<< "${content}"
+}
+
+# ── Step 1: Build ──────────────────────────────────────────────────────────────
 info "Building nextclouddock image..."
 docker build -t nextclouddock "${REPO_ROOT}" \
   || fail "Docker build failed"
 pass "nextclouddock image built"
 
-# Step 2: Start the Nextcloud stack
+# ── Step 2: Start stack ────────────────────────────────────────────────────────
 info "Starting Nextcloud + MariaDB stack..."
 docker compose -f "${COMPOSE_FILE}" up -d
 pass "Stack started"
 
-# Step 3: Wait for Nextcloud to be fully installed
+# ── Step 3: Wait for Nextcloud ─────────────────────────────────────────────────
 info "Waiting for Nextcloud to finish installing (this can take 60-120 seconds)..."
 MAX_WAIT=180
 ELAPSED=0
@@ -71,51 +133,99 @@ done
 echo ""
 pass "Nextcloud is installed and healthy (${ELAPSED}s)"
 
-# Step 4: Create local test files
+# ── Test 1: Basic sync ─────────────────────────────────────────────────────────
+info "--- Test 1: Basic sync ---"
+
 TMPDIR_LOCAL="$(mktemp -d)"
-info "Created local test folder: ${TMPDIR_LOCAL}"
 
-echo "hello from nextclouddock test" > "${TMPDIR_LOCAL}/test-file-1.txt"
-echo "second test file"              > "${TMPDIR_LOCAL}/test-file-2.txt"
+echo "hello from nextclouddock" > "${TMPDIR_LOCAL}/sync-file-1.txt"
+echo "second synced file"       > "${TMPDIR_LOCAL}/sync-file-2.txt"
 mkdir -p "${TMPDIR_LOCAL}/subdir"
-echo "inside a subdirectory"         > "${TMPDIR_LOCAL}/subdir/test-file-3.txt"
+echo "inside a subdirectory"    > "${TMPDIR_LOCAL}/subdir/sync-file-3.txt"
 
-pass "Created test files"
-
-# Step 5: Run nextclouddock
-info "Running nextclouddock sync..."
-docker run --rm \
-  --network "${NETWORK}" \
-  --env-file "${ENV_FILE}" \
+run_sync "${TMPDIR_LOCAL}" \
   -e UNSYNCED_FOLDERS_FILE=/dev/null \
-  -v "${TMPDIR_LOCAL}:/sync" \
-  nextclouddock \
-  && pass "nextclouddock exited 0" \
-  || fail "nextclouddock exited non-zero — sync failed"
+  && pass "sync exited 0" \
+  || fail "sync exited non-zero"
 
 sleep 2
 
-# Step 6: Verify files on Nextcloud via WebDAV
-info "Verifying files on Nextcloud via WebDAV..."
+assert_remote_exists "sync-file-1.txt"
+assert_remote_exists "sync-file-2.txt"
+assert_remote_exists "subdir/sync-file-3.txt"
 
-WEBDAV_BASE="${NC_URL_HOST}/remote.php/webdav"
+rm -rf "${TMPDIR_LOCAL}"; TMPDIR_LOCAL=""
 
-check_file() {
-  local remote_path="$1"
-  local http_status
-  http_status=$(curl -s -o /dev/null -w "%{http_code}" \
-    -u "${NEXTCLOUD_USER}:${NEXTCLOUD_PASSWORD}" \
-    "${WEBDAV_BASE}/${remote_path}")
-  if [[ "${http_status}" == "200" ]]; then
-    pass "Remote file exists: ${remote_path}"
-  else
-    fail "Remote file missing: ${remote_path} (HTTP ${http_status})"
-  fi
-}
+# ── Test 2: Exclude file ───────────────────────────────────────────────────────
+info "--- Test 2: Exclude file (syncexclude.lst) ---"
 
-check_file "test-file-1.txt"
-check_file "test-file-2.txt"
-check_file "subdir/test-file-3.txt"
+TMPDIR_LOCAL="$(mktemp -d)"
 
+# Files that should be synced
+echo "keep me"    > "${TMPDIR_LOCAL}/keep.txt"
+mkdir -p "${TMPDIR_LOCAL}/keepdir"
+echo "kept"       > "${TMPDIR_LOCAL}/keepdir/kept.txt"
+
+# Files that match default exclude patterns in syncexclude.lst
+echo "skip"       > "${TMPDIR_LOCAL}/draft.tmp"
+echo "skip"       > "${TMPDIR_LOCAL}/buffer.swp"
+touch "${TMPDIR_LOCAL}/.DS_Store"
+echo "skip"       > "${TMPDIR_LOCAL}/~\$word.doc"
+
+# Write a custom exclude file that also skips a whole directory
+cat > "${TMPDIR_LOCAL}/my-exclude.lst" <<'EOF'
+*.tmp
+*.swp
+.DS_Store
+~$*
+skip-this-dir
+EOF
+mkdir -p "${TMPDIR_LOCAL}/skip-this-dir"
+echo "skip" > "${TMPDIR_LOCAL}/skip-this-dir/file.txt"
+
+run_sync "${TMPDIR_LOCAL}" \
+  -e EXCLUDE_FILE=/sync/my-exclude.lst \
+  -e UNSYNCED_FOLDERS_FILE=/dev/null \
+  && pass "sync exited 0" \
+  || fail "sync exited non-zero"
+
+sleep 2
+
+assert_remote_exists "keep.txt"
+assert_remote_exists "keepdir/kept.txt"
+assert_remote_absent "draft.tmp"
+assert_remote_absent "buffer.swp"
+assert_remote_absent ".DS_Store"
+assert_remote_absent "skip-this-dir/file.txt"
+
+rm -rf "${TMPDIR_LOCAL}"; TMPDIR_LOCAL=""
+
+# ── Test 3: Unsyncedfolders ────────────────────────────────────────────────────
+info "--- Test 3: Unsyncedfolders (selective sync) ---"
+# unsyncedfolders prevents remote-only folders from being downloaded locally.
+# Set up: create a folder on the remote that does not exist locally, then sync
+# with that folder listed in unsyncedfolders.lst and verify it was not downloaded.
+
+webdav_mkdir "remote-skip"
+webdav_put   "remote-skip/remote-file.txt" "should not appear locally"
+
+TMPDIR_LOCAL="$(mktemp -d)"
+echo "local anchor" > "${TMPDIR_LOCAL}/anchor.txt"
+
+cat > "${TMPDIR_LOCAL}/unsynced.lst" <<'EOF'
+remote-skip
+EOF
+
+run_sync "${TMPDIR_LOCAL}" \
+  -e UNSYNCED_FOLDERS_FILE=/sync/unsynced.lst \
+  && pass "sync exited 0" \
+  || fail "sync exited non-zero"
+
+assert_local_absent "${TMPDIR_LOCAL}" "remote-skip"
+assert_local_absent "${TMPDIR_LOCAL}" "remote-skip/remote-file.txt"
+
+rm -rf "${TMPDIR_LOCAL}"; TMPDIR_LOCAL=""
+
+# ── Done ───────────────────────────────────────────────────────────────────────
 pass "All tests passed."
 # EXIT trap handles teardown

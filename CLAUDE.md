@@ -48,7 +48,7 @@ Two files control what gets synced. Both are baked into the image at build time 
 | File | Env var | Purpose |
 |---|---|---|
 | `syncexclude.lst` | `EXCLUDE_FILE` | Glob patterns for files/dirs to never sync (passed to `--exclude`) |
-| `unsyncedfolders.lst` | `UNSYNCED_FOLDERS_FILE` | Remote folder paths to skip entirely, one per line (selective sync, passed to `--unsyncedfolders`) |
+| `unsyncedfolders.lst` | `UNSYNCED_FOLDERS_FILE` | Remote folder paths to skip entirely, one per line, **no leading slash** (e.g. `Archive`, not `/Archive`) |
 
 To override at runtime (e.g. use a custom exclude list):
 ```bash

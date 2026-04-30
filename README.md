@@ -1,11 +1,11 @@
-# nextclouddock
+# nextcloudsync
 
 A Docker image that runs `nextcloudcmd` to perform a one-shot sync between a local folder and a remote Nextcloud instance. Mount a host directory, pass your credentials, and the container syncs and exits.
 
 ## Build
 
 ```bash
-docker build -t nextclouddock .
+docker build -t nextcloudsync .
 ```
 
 ## Run
@@ -24,7 +24,7 @@ Then run:
 docker run --rm \
   --env-file .env \
   -v ~/Documents/Sync:/sync \
-  nextclouddock
+  nextcloudsync
 ```
 
 The container syncs `~/Documents/Sync` with the Nextcloud root and exits.
@@ -62,7 +62,7 @@ docker run --rm \
   --env-file .env \
   -v ~/Documents/Sync:/sync \
   -v /path/to/my-exclude.lst:/config/syncexclude.lst:ro \
-  nextclouddock
+  nextcloudsync
 ```
 
 To sync only specific folders:
@@ -76,5 +76,5 @@ docker run --rm \
   --env-file .env \
   -v ~/Documents/Sync:/sync \
   -v /path/to/my-synced.lst:/config/syncedfolders.lst:ro \
-  nextclouddock
+  nextcloudsync
 ```

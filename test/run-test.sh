@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End-to-end test for nextclouddock.
+# End-to-end test for nextcloudsync.
 #
 # Starts a local Nextcloud + MariaDB stack and runs four test suites:
 #   1. Basic sync  — files are uploaded and reachable via WebDAV
@@ -45,7 +45,7 @@ trap cleanup EXIT
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
-# Run nextclouddock with the given local dir, plus any extra -e overrides
+# Run nextcloudsync with the given local dir, plus any extra -e overrides
 run_sync() {
   local local_dir="$1"; shift
   docker run --rm \
@@ -54,7 +54,7 @@ run_sync() {
     -e SYNC_TIMEOUT=60 \
     "$@" \
     -v "${local_dir}:/sync" \
-    nextclouddock \
+    nextcloudsync \
     && pass "sync exited 0" \
     || fail "sync exited non-zero"
 }
@@ -114,10 +114,10 @@ webdav_put() {
 }
 
 # ── Step 1: Build ──────────────────────────────────────────────────────────────
-info "Building nextclouddock image..."
-docker build -t nextclouddock "${REPO_ROOT}" \
+info "Building nextcloudsync image..."
+docker build -t nextcloudsync "${REPO_ROOT}" \
   || fail "Docker build failed"
-pass "nextclouddock image built"
+pass "nextcloudsync image built"
 
 # ── Step 2: Start stack ────────────────────────────────────────────────────────
 info "Starting Nextcloud + MariaDB stack..."
@@ -149,7 +149,7 @@ info "--- Test 1: Basic sync ---"
 
 TMPDIR_LOCAL="$(mktemp -d)"
 
-echo "hello from nextclouddock" > "${TMPDIR_LOCAL}/sync-file-1.txt"
+echo "hello from nextcloudsync" > "${TMPDIR_LOCAL}/sync-file-1.txt"
 echo "second synced file"       > "${TMPDIR_LOCAL}/sync-file-2.txt"
 mkdir -p "${TMPDIR_LOCAL}/subdir"
 echo "inside a subdirectory"    > "${TMPDIR_LOCAL}/subdir/sync-file-3.txt"

@@ -1,6 +1,6 @@
 # Test Environment
 
-End-to-end test for `nextclouddock`. Spins up a local Nextcloud + MariaDB stack, syncs test files using `nextclouddock`, verifies the files exist on Nextcloud via WebDAV, then tears everything down including Docker volumes.
+End-to-end test for `nextcloudsync`. Spins up a local Nextcloud + MariaDB stack, syncs test files using `nextcloudsync`, verifies the files exist on Nextcloud via WebDAV, then tears everything down including Docker volumes.
 
 ## Prerequisites
 

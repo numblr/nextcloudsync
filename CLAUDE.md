@@ -34,13 +34,13 @@ Pass secrets via `--env-file` or `-e` at `docker run` time — never bake creden
 
 ```bash
 # Build
-docker build -t nextclouddock .
+docker build -t nextcloudsync .
 
 # Run (bind-mount ~/Documents/Sync → /sync inside container)
 docker run --rm \
   --env-file .env \
   -v ~/Documents/Sync:/sync \
-  nextclouddock
+  nextcloudsync
 ```
 
 ## Sync Filtering
@@ -59,7 +59,7 @@ docker run --rm \
   --env-file .env \
   -v ~/Documents/Sync:/sync \
   -v /path/to/my-exclude.lst:/config/syncexclude.lst:ro \
-  nextclouddock
+  nextcloudsync
 ```
 
 ## nextcloudcmd Invocation Pattern
@@ -88,7 +88,7 @@ nextcloudcmd \
 
 ## Test Environment
 
-A local end-to-end test environment lives in `test/`. It spins up Nextcloud + MariaDB, runs `nextclouddock` against it, and verifies files arrived via WebDAV.
+A local end-to-end test environment lives in `test/`. It spins up Nextcloud + MariaDB, runs `nextcloudsync` against it, and verifies files arrived via WebDAV.
 
 ```bash
 cd test/
@@ -98,7 +98,7 @@ cd test/
 Expected runtime: 2–4 minutes. See `test/README.md` for details.
 
 - Compose project name is pinned to `nextcloudtest` so the Docker network is always `nextcloudtest_default`
-- `nextclouddock` runs with `--network nextcloudtest_default` so it resolves the `nextcloud` hostname
+- `nextcloudsync` runs with `--network nextcloudtest_default` so it resolves the `nextcloud` hostname
 - `test/.env.test` is intentionally committed — these are local test credentials, not real secrets
 - Teardown uses `docker compose down -v` to remove volumes for reproducibility
 

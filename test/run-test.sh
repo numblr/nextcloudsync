@@ -54,7 +54,9 @@ run_sync() {
     -e SYNC_TIMEOUT=60 \
     "$@" \
     -v "${local_dir}:/sync" \
-    nextclouddock
+    nextclouddock \
+    && pass "sync exited 0" \
+    || fail "sync exited non-zero"
 }
 
 # Assert a remote WebDAV path returns HTTP 200 (file exists)
@@ -153,9 +155,7 @@ mkdir -p "${TMPDIR_LOCAL}/subdir"
 echo "inside a subdirectory"    > "${TMPDIR_LOCAL}/subdir/sync-file-3.txt"
 
 run_sync "${TMPDIR_LOCAL}" \
-  -e UNSYNCED_FOLDERS_FILE=/dev/null \
-  && pass "sync exited 0" \
-  || fail "sync exited non-zero"
+  -e UNSYNCED_FOLDERS_FILE=/dev/null
 
 sleep 2
 
@@ -194,9 +194,7 @@ echo "skip" > "${TMPDIR_LOCAL}/skip-this-dir/file.txt"
 
 run_sync "${TMPDIR_LOCAL}" \
   -e EXCLUDE_FILE=/sync/my-exclude.lst \
-  -e UNSYNCED_FOLDERS_FILE=/dev/null \
-  && pass "sync exited 0" \
-  || fail "sync exited non-zero"
+  -e UNSYNCED_FOLDERS_FILE=/dev/null
 
 sleep 2
 
@@ -226,9 +224,7 @@ remote-skip
 EOF
 
 run_sync "${TMPDIR_LOCAL}" \
-  -e UNSYNCED_FOLDERS_FILE=/sync/unsynced.lst \
-  && pass "sync exited 0" \
-  || fail "sync exited non-zero"
+  -e UNSYNCED_FOLDERS_FILE=/sync/unsynced.lst
 
 assert_local_absent "${TMPDIR_LOCAL}" "remote-skip"
 assert_local_absent "${TMPDIR_LOCAL}" "remote-skip/remote-file.txt"
@@ -236,7 +232,7 @@ assert_local_absent "${TMPDIR_LOCAL}" "remote-skip/remote-file.txt"
 rm -rf "${TMPDIR_LOCAL}"; TMPDIR_LOCAL=""
 
 # ── Test 4: Syncedfolders allowlist ───────────────────────────────────────────
-info "--- Test 4: Syncedfolced allowlist ---"
+info "--- Test 4: Syncedfolders allowlist ---"
 # Create two remote folders, one with a nested subfolder.
 # List only one in syncedfolders.lst and verify:
 #   - the allowlisted folder (including nested content) is downloaded
@@ -256,9 +252,7 @@ allowed-folder
 EOF
 
 run_sync "${TMPDIR_LOCAL}" \
-  -e SYNCED_FOLDERS_FILE=/sync/synced.lst \
-  && pass "sync exited 0" \
-  || fail "sync exited non-zero"
+  -e SYNCED_FOLDERS_FILE=/sync/synced.lst
 
 assert_local_exists "${TMPDIR_LOCAL}" "allowed-folder/file.txt"
 assert_local_exists "${TMPDIR_LOCAL}" "allowed-folder/nested/deep.txt"

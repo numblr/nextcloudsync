@@ -20,10 +20,9 @@ fi
 # timeout ensures the container exits once the sync is done.
 
 if [ -f "$SYNCED_FOLDERS_FILE" ] && grep -qvE '^\s*(#|$)' "$SYNCED_FOLDERS_FILE"; then
-  # Allowlist mode: one nextcloudcmd invocation per listed path.
-  # REMOTE_FOLDER and UNSYNCED_FOLDERS_FILE are ignored in this mode.
   EXIT_CODE=0
   while IFS= read -r line; do
+    line="${line#"${line%%[! 	]*}"}"
     case "$line" in '#'*|'') continue ;; esac
     TARGET_DIR="${LOCAL_FOLDER}/${line}"
     mkdir -p "$TARGET_DIR"
@@ -39,19 +38,18 @@ if [ -f "$SYNCED_FOLDERS_FILE" ] && grep -qvE '^\s*(#|$)' "$SYNCED_FOLDERS_FILE"
       "$NEXTCLOUD_URL" || EXIT_CODE=$?
   done < "$SYNCED_FOLDERS_FILE"
   exit "$EXIT_CODE"
-else
-  # Normal mode: single invocation syncing REMOTE_FOLDER.
-  if [ -f "$UNSYNCED_FOLDERS_FILE" ]; then
-    EXTRA_ARGS="$EXTRA_ARGS --unsyncedfolders $UNSYNCED_FOLDERS_FILE"
-  fi
-  # shellcheck disable=SC2086
-  exec timeout "$SYNC_TIMEOUT" nextcloudcmd \
-    --non-interactive \
-    --silent \
-    -u "$NEXTCLOUD_USER" \
-    -p "$NEXTCLOUD_PASSWORD" \
-    --path "$REMOTE_FOLDER" \
-    $EXTRA_ARGS \
-    "$LOCAL_FOLDER" \
-    "$NEXTCLOUD_URL"
 fi
+
+if [ -f "$UNSYNCED_FOLDERS_FILE" ]; then
+  EXTRA_ARGS="$EXTRA_ARGS --unsyncedfolders $UNSYNCED_FOLDERS_FILE"
+fi
+# shellcheck disable=SC2086
+exec timeout "$SYNC_TIMEOUT" nextcloudcmd \
+  --non-interactive \
+  --silent \
+  -u "$NEXTCLOUD_USER" \
+  -p "$NEXTCLOUD_PASSWORD" \
+  --path "$REMOTE_FOLDER" \
+  $EXTRA_ARGS \
+  "$LOCAL_FOLDER" \
+  "$NEXTCLOUD_URL"

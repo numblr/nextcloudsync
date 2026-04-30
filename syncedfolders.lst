@@ -1,0 +1,11 @@
+# Allowlist: only sync these remote paths (one per line).
+# When this file has any non-comment entries, nextclouddock runs one
+# nextcloudcmd invocation per listed path instead of a single full sync.
+# Paths are relative to the Nextcloud root (no leading slash required).
+# Both top-level folders and nested paths are supported.
+# When this file is empty or absent, all remote content is synced (default).
+#
+# Examples:
+#   Documents
+#   Photos
+#   Documents/Work/Projects

@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # End-to-end test for nextclouddock.
 #
-# Starts a local Nextcloud + MariaDB stack and runs three test suites:
+# Starts a local Nextcloud + MariaDB stack and runs four test suites:
 #   1. Basic sync  — files are uploaded and reachable via WebDAV
 #   2. Exclude     — files matching syncexclude.lst patterns are not uploaded
 #   3. Unsynced    — remote folders listed in unsyncedfolders.lst are not downloaded
+#   4. Synced      — only folders listed in syncedfolders.lst are synced (incl. nested paths)
 #
 # Usage:
 #   cd test/
@@ -86,6 +87,14 @@ assert_local_absent() {
   [[ ! -e "${dir}/${rel_path}" ]] \
     && pass "local absent:   ${rel_path}" \
     || fail "local present (should not have been downloaded): ${rel_path}"
+}
+
+# Assert a local path DOES exist (was downloaded)
+assert_local_exists() {
+  local dir="$1" rel_path="$2"
+  [[ -e "${dir}/${rel_path}" ]] \
+    && pass "local exists:   ${rel_path}" \
+    || fail "local missing (should have been downloaded): ${rel_path}"
 }
 
 # Create a remote folder + file via WebDAV
@@ -223,6 +232,37 @@ run_sync "${TMPDIR_LOCAL}" \
 
 assert_local_absent "${TMPDIR_LOCAL}" "remote-skip"
 assert_local_absent "${TMPDIR_LOCAL}" "remote-skip/remote-file.txt"
+
+rm -rf "${TMPDIR_LOCAL}"; TMPDIR_LOCAL=""
+
+# ── Test 4: Syncedfolders allowlist ───────────────────────────────────────────
+info "--- Test 4: Syncedfolced allowlist ---"
+# Create two remote folders, one with a nested subfolder.
+# List only one in syncedfolders.lst and verify:
+#   - the allowlisted folder (including nested content) is downloaded
+#   - the non-listed folder is not downloaded
+
+webdav_mkdir "allowed-folder"
+webdav_put   "allowed-folder/file.txt"        "should be downloaded"
+webdav_mkdir "allowed-folder/nested"
+webdav_put   "allowed-folder/nested/deep.txt" "nested content, also downloaded"
+webdav_mkdir "blocked-folder"
+webdav_put   "blocked-folder/file.txt"        "should NOT be downloaded"
+
+TMPDIR_LOCAL="$(mktemp -d)"
+
+cat > "${TMPDIR_LOCAL}/synced.lst" <<'EOF'
+allowed-folder
+EOF
+
+run_sync "${TMPDIR_LOCAL}" \
+  -e SYNCED_FOLDERS_FILE=/sync/synced.lst \
+  && pass "sync exited 0" \
+  || fail "sync exited non-zero"
+
+assert_local_exists "${TMPDIR_LOCAL}" "allowed-folder/file.txt"
+assert_local_exists "${TMPDIR_LOCAL}" "allowed-folder/nested/deep.txt"
+assert_local_absent "${TMPDIR_LOCAL}" "blocked-folder"
 
 rm -rf "${TMPDIR_LOCAL}"; TMPDIR_LOCAL=""
 

@@ -9,5 +9,6 @@ RUN chmod +x /entrypoint.sh
 
 COPY syncexclude.lst /config/syncexclude.lst
 COPY unsyncedfolders.lst /config/unsyncedfolders.lst
+COPY syncedfolders.lst /config/syncedfolders.lst
 
 ENTRYPOINT ["/entrypoint.sh"]

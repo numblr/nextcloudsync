@@ -24,7 +24,9 @@ Dockerfile for a Docker image that runs `nextcloudcmd` to sync a local folder on
 | `REMOTE_FOLDER` | Nextcloud remote path to sync (e.g. `/`) |
 
 | `EXCLUDE_FILE` | Path inside the container to the exclude patterns file (default: `/config/syncexclude.lst`) |
-| `UNSYNCED_FOLDERS_FILE` | Path inside the container to the selective sync file (default: `/config/unsyncedfolders.lst`) |
+| `UNSYNCED_FOLDERS_FILE` | Path inside the container to the blocklist file (default: `/config/unsyncedfolders.lst`). Ignored when `SYNCED_FOLDERS_FILE` is active. |
+| `SYNCED_FOLDERS_FILE` | Path inside the container to the allowlist file (default: `/config/syncedfolders.lst`). When non-empty, only listed paths are synced; `REMOTE_FOLDER` is ignored. |
+| `SYNC_TIMEOUT` | Seconds before a sync invocation is forcefully terminated (default: `300`) |
 
 Pass secrets via `--env-file` or `-e` at `docker run` time — never bake credentials into the image.
 
@@ -43,12 +45,13 @@ docker run --rm \
 
 ## Sync Filtering
 
-Two files control what gets synced. Both are baked into the image at build time as defaults, and can be overridden at runtime by bind-mounting a replacement file and pointing the env var to it.
+Three files control what gets synced. All are baked into the image at build time as defaults and can be overridden at runtime by bind-mounting a replacement file.
 
 | File | Env var | Purpose |
 |---|---|---|
 | `syncexclude.lst` | `EXCLUDE_FILE` | Glob patterns for files/dirs to never sync (passed to `--exclude`) |
-| `unsyncedfolders.lst` | `UNSYNCED_FOLDERS_FILE` | Remote folder paths to skip entirely, one per line, **no leading slash** (e.g. `Archive`, not `/Archive`) |
+| `unsyncedfolders.lst` | `UNSYNCED_FOLDERS_FILE` | Blocklist: remote folders to skip, one per line, no leading slash. Only used in normal mode. |
+| `syncedfolders.lst` | `SYNCED_FOLDERS_FILE` | Allowlist: when non-empty, only sync these paths (one per line, supports any depth e.g. `Documents/Work`). Runs one `nextcloudcmd` per entry. Takes precedence over `REMOTE_FOLDER` and `UNSYNCED_FOLDERS_FILE`. |
 
 To override at runtime (e.g. use a custom exclude list):
 ```bash
@@ -61,17 +64,26 @@ docker run --rm \
 
 ## nextcloudcmd Invocation Pattern
 
+Normal mode (single invocation):
 ```bash
 nextcloudcmd \
-  --non-interactive \
-  --silent \
-  -u "$NEXTCLOUD_USER" \
-  -p "$NEXTCLOUD_PASSWORD" \
+  --non-interactive --silent \
+  -u "$NEXTCLOUD_USER" -p "$NEXTCLOUD_PASSWORD" \
   --path "$REMOTE_FOLDER" \
   --exclude "$EXCLUDE_FILE" \
   --unsyncedfolders "$UNSYNCED_FOLDERS_FILE" \
-  "$LOCAL_FOLDER" \
-  "$NEXTCLOUD_URL"
+  "$LOCAL_FOLDER" "$NEXTCLOUD_URL"
+```
+
+Allowlist mode (one invocation per line in `syncedfolders.lst`):
+```bash
+# for each $path in syncedfolders.lst — syncs into $LOCAL_FOLDER/$path:
+nextcloudcmd \
+  --non-interactive --silent \
+  -u "$NEXTCLOUD_USER" -p "$NEXTCLOUD_PASSWORD" \
+  --path "$path" \
+  --exclude "$EXCLUDE_FILE" \
+  "$LOCAL_FOLDER/$path" "$NEXTCLOUD_URL"
 ```
 
 ## Test Environment

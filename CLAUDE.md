@@ -27,6 +27,7 @@ Dockerfile for a Docker image that runs `nextcloudcmd` to sync a local folder on
 | `UNSYNCED_FOLDERS_FILE` | Path inside the container to the blocklist file (default: `/config/unsyncedfolders.lst`). Ignored when `SYNCED_FOLDERS_FILE` is active. |
 | `SYNCED_FOLDERS_FILE` | Path inside the container to the allowlist file (default: `/config/syncedfolders.lst`). When non-empty, only listed paths are synced; `REMOTE_FOLDER` is ignored. |
 | `SYNC_TIMEOUT` | Seconds before a sync invocation is forcefully terminated (default: `300`) |
+| `TRUST_ALL_CERTIFICATES` | Set to `true` to pass `--trust-all-certificates` to nextcloudcmd (for self-signed certs, default: `false`) |
 
 Pass secrets via `--env-file` or `-e` at `docker run` time — never bake credentials into the image.
 

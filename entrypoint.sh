@@ -10,8 +10,12 @@ set -e
 : "${UNSYNCED_FOLDERS_FILE:=/config/unsyncedfolders.lst}"
 : "${SYNCED_FOLDERS_FILE:=/config/syncedfolders.lst}"
 : "${SYNC_TIMEOUT:=300}"
+: "${TRUST_ALL_CERTIFICATES:=false}"
 
 EXTRA_ARGS=""
+if [ "$TRUST_ALL_CERTIFICATES" = "true" ]; then
+  EXTRA_ARGS="$EXTRA_ARGS --trust-all-certificates"
+fi
 if [ -f "$EXCLUDE_FILE" ]; then
   EXTRA_ARGS="$EXTRA_ARGS --exclude $EXCLUDE_FILE"
 fi

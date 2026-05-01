@@ -44,6 +44,7 @@ All options are passed as environment variables.
 | `UNSYNCED_FOLDERS_FILE` | `/config/unsyncedfolders.lst` | Blocklist of remote folders to skip (normal mode only) |
 | `SYNCED_FOLDERS_FILE` | `/config/syncedfolders.lst` | Allowlist of remote paths to sync; when non-empty, only listed paths are synced |
 | `SYNC_TIMEOUT` | `300` | Seconds before a sync invocation is forcefully terminated |
+| `TRUST_ALL_CERTIFICATES` | `false` | Set to `true` to skip TLS certificate verification (for self-signed certs) |
 
 ## Sync filtering
 

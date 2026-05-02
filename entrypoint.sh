@@ -11,6 +11,7 @@ set -e
 : "${SYNCED_FOLDERS_FILE:=/config/syncedfolders.lst}"
 : "${SYNC_TIMEOUT:=300}"
 : "${TRUST_ALL_CERTIFICATES:=false}"
+: "${VERBOSE:=false}"
 
 log() { printf '[nextcloudsync] %s\n' "$*"; }
 
@@ -18,6 +19,11 @@ log "Nextcloud URL:  $NEXTCLOUD_URL"
 log "User:           $NEXTCLOUD_USER"
 
 EXTRA_ARGS=""
+if [ "$VERBOSE" != "true" ]; then
+  EXTRA_ARGS="$EXTRA_ARGS --silent"
+else
+  log "Verbose:        on"
+fi
 if [ "$TRUST_ALL_CERTIFICATES" = "true" ]; then
   EXTRA_ARGS="$EXTRA_ARGS --trust"
   log "TLS:            trust (self-signed)"
@@ -42,7 +48,6 @@ if [ -f "$SYNCED_FOLDERS_FILE" ] && grep -qvE '^\s*(#|$)' "$SYNCED_FOLDERS_FILE"
     # shellcheck disable=SC2086
     if timeout "$SYNC_TIMEOUT" nextcloudcmd \
       --non-interactive \
-      --silent \
       -u "$NEXTCLOUD_USER" \
       -p "$NEXTCLOUD_PASSWORD" \
       --path "$line" \
@@ -68,7 +73,6 @@ log "Starting sync..."
 # shellcheck disable=SC2086
 exec timeout "$SYNC_TIMEOUT" nextcloudcmd \
   --non-interactive \
-  --silent \
   -u "$NEXTCLOUD_USER" \
   -p "$NEXTCLOUD_PASSWORD" \
   --path "$REMOTE_FOLDER" \

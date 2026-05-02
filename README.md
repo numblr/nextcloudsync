@@ -45,6 +45,7 @@ All options are passed as environment variables.
 | `SYNCED_FOLDERS_FILE` | `/config/syncedfolders.lst` | Allowlist of remote paths to sync; when non-empty, only listed paths are synced |
 | `SYNC_TIMEOUT` | `300` | Seconds before a sync invocation is forcefully terminated |
 | `TRUST_ALL_CERTIFICATES` | `false` | Set to `true` to skip TLS certificate verification (for self-signed certs) |
+| `VERBOSE` | `false` | Set to `true` to print each transferred file (omits `--silent`) |
 
 ## Sync filtering
 

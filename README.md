@@ -47,6 +47,28 @@ All options are passed as environment variables.
 | `TRUST_ALL_CERTIFICATES` | `false` | Set to `true` to skip TLS certificate verification (for self-signed certs) |
 | `VERBOSE` | `false` | Set to `true` to print each transferred file (omits `--silent`) |
 
+## Tailscale
+
+If your Nextcloud instance is only reachable via Tailscale, use the included `docker-compose.yml`. It runs a Tailscale container as a sidecar and routes `nextcloudsync` traffic through it — no Tailscale installation on the host required.
+
+**1. Generate an ephemeral auth key**
+
+Go to [tailscale.com/admin/settings/keys](https://login.tailscale.com/admin/settings/keys) and create an ephemeral key. Ephemeral nodes disappear from your Tailnet automatically when the container exits.
+
+**2. Add it to your `.env`**
+
+```env
+TS_AUTHKEY=tskey-auth-...
+```
+
+**3. Run with Docker Compose**
+
+```bash
+docker compose up
+```
+
+The Tailscale container joins your Tailnet, `nextcloudsync` waits for it to connect, then runs the sync and both containers exit.
+
 ## Sync filtering
 
 Three config files are baked into the image and can be overridden at runtime via bind mount.

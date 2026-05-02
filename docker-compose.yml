@@ -1,0 +1,36 @@
+name: nextcloudsync
+
+services:
+  tailscale:
+    image: tailscale/tailscale:latest
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_STATE_DIR=/var/lib/tailscale
+      # - TS_EXTRA_ARGS=--advertise-tags=tag:nextcloudsync
+    volumes:
+      - tailscale_state:/var/lib/tailscale
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    healthcheck:
+      test: ["CMD-SHELL", "tailscale status --json | grep -q '\"BackendState\":\"Running\"'"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  nextcloudsync:
+    image: nextcloudsync
+    depends_on:
+      tailscale:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      - ALL_PROXY=socks5://tailscale:1055
+      - NO_PROXY=localhost,127.0.0.1
+    volumes:
+      - ${LOCAL_FOLDER:-/sync}:/sync
+
+volumes:
+  tailscale_state:
